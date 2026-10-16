@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# ulePack output / scratch (never commit videos)
+*.shrunk.*
+*.shrunk-*.*
+*.part
+*.mp4
+*.webm
+*.mkv
+*.mov
+*.gif
+
+# tooling / OS
+.playwright-mcp/
+.env
+*.log
+.DS_Store
+.idea/
+.vscode/

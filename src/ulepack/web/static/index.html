@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ulepack-token" content="__TOKEN__">
+<title>ulePack</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <img src="/icon.svg" alt="" width="22" height="22">
+  <h1>ulePack</h1>
+  <span class="muted small" id="version"></span>
+  <span class="live" id="live" title="connection to the ulepack server"></span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme" title="Theme: auto / light / dark"></button>
+  <button class="btn danger" id="stop" title="Stop the ulePack server and free its port">Stop</button>
+</header>
+<div class="idlebar" id="idlebar" hidden>
+  <span id="idletext"></span>
+  <button class="btn sm" id="keep">Keep running</button>
+</div>
+<div class="stopped" id="stopped" hidden>
+  <div class="panel">
+    <h2>ulePack stopped</h2>
+    <p id="stopreason"></p>
+    <p class="muted">Port closed. Start it again with <code>ulepack ui</code>; this page reconnects by itself.</p>
+    <button class="btn" id="closetab">Close this tab</button>
+  </div>
+</div>
+<main>
+  <section class="col-src">
+    <div class="panel">
+      <div class="panel-h">
+        <h2>Videos</h2>
+        <span class="spacer"></span>
+        <span class="muted small" id="selcount"></span>
+        <button class="btn sm" id="selall">All</button>
+        <button class="btn sm" id="selnone">None</button>
+      </div>
+      <div class="pathbar">
+        <button class="btn sm" id="up" title="Parent folder">↑</button>
+        <input type="text" id="path" spellcheck="false" aria-label="Folder">
+        <button class="btn sm" id="go">Open</button>
+      </div>
+      <div class="chips" id="places"></div>
+      <div class="chips dirs" id="dirs"></div>
+      <div class="drop" id="drop">
+        <b>Drop videos here</b>
+        <span class="muted">or click to pick files. They're copied to <code id="uploads"></code> and the result is saved next to them.</span>
+        <input type="file" id="picker" accept="video/*,.mkv,.webm,.gif" multiple hidden>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </section>
+
+  <section class="col-side">
+    <div class="panel">
+      <h2>Make it fit</h2>
+      <div class="chips" id="targets"></div>
+      <div class="custom">
+        <label for="custom">Custom limit</label>
+        <input type="number" id="custom" min="0.1" step="0.5" placeholder="MB">
+        <span class="muted">MB</span>
+      </div>
+
+      <div class="seg" id="format">
+        <button data-v="mp4" class="on">MP4 video</button>
+        <button data-v="gif">GIF</button>
+      </div>
+
+      <details id="more">
+        <summary>More options</summary>
+        <div class="form">
+          <label class="mp4only">Codec
+            <select id="codec">
+              <option value="h264">H.264, plays everywhere</option>
+              <option value="hevc">HEVC, ~30% smaller</option>
+              <option value="av1">AV1, smallest, newer apps</option>
+            </select>
+          </label>
+          <label class="mp4only">Max height
+            <select id="max_height">
+              <option value="">Auto</option><option>1440</option><option>1080</option>
+              <option>720</option><option>540</option><option>480</option>
+            </select>
+          </label>
+          <label class="mp4only">Frame rate
+            <select id="fps">
+              <option value="">Auto (≤30)</option><option>60</option><option>30</option>
+              <option>24</option><option>15</option>
+            </select>
+          </label>
+          <label class="gifonly">GIF width
+            <select id="gif_width"><option>1080</option><option selected>800</option><option>640</option><option>480</option></select>
+          </label>
+          <label class="gifonly">GIF fps
+            <select id="gif_fps"><option>20</option><option>15</option><option selected>12</option><option>10</option><option>8</option></select>
+          </label>
+          <label>Speed
+            <select id="speed"><option value="1">1×</option><option>1.25</option><option>1.5</option><option>2</option><option>3</option><option>4</option></select>
+          </label>
+          <label>Start <input type="text" id="start" placeholder="0:00"></label>
+          <label>End <input type="text" id="end" placeholder="end"></label>
+          <label class="check mp4only"><input type="checkbox" id="no_audio"> Drop audio</label>
+        </div>
+      </details>
+
+      <div class="plan" id="plan"></div>
+      <button class="btn primary big" id="run" disabled>Select a video</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">
+        <h2>Jobs</h2>
+        <span class="spacer"></span>
+        <button class="btn sm" id="clear">Clear finished</button>
+      </div>
+      <div id="jobs"></div>
+    </div>
+  </section>
+</main>
+<div class="dropveil" id="veil"><div>Drop to add</div></div>
+<script src="/app.js"></script>
+</body>
+</html>
