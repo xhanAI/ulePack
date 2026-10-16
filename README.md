@@ -1,7 +1,5 @@
 # ulePack
 
-_Name:_ Albanian "ule pak", "lower it a bit", spelled ulePack (pak ≈ pack).
-
 _What it does:_ Shrinks and converts screen recordings so they fit chat-app upload limits (Discord 10 MB, WhatsApp 16 MB, email, Slack…). It's an ffmpeg wrapper with a web UI, a Textual TUI and a scriptable CLI, all on one engine.
 _Stack:_ Python 3.12, ffmpeg/ffprobe, Textual (TUI), stdlib HTTP server (web UI, the Local Browser UI Pattern)
 _Next:_ Remember the last used preset in the TUI; a Wave widget like tidyUp's.
@@ -76,6 +74,8 @@ and no-store. A newer install replaces an older running server automatically.
     src/ulepack/jobs.py        single-worker job queue (web UI + TUI)
     src/ulepack/cli.py         argparse CLI + `ui` / `tui` subcommands
     src/ulepack/tui.py         Textual app (git-odos theme, same tokens as tidyUp)
+
+_Name:_ Albanian "ule pak", "lower it a bit", spelled ulePack (pak ≈ pack).
     src/ulepack/web/server.py  stdlib HTTP server + JSON API
     src/ulepack/web/static/    index.html, app.js, style.css, theme.js, icon.svg
 
