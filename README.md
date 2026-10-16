@@ -75,8 +75,9 @@ and no-store. A newer install replaces an older running server automatically.
     src/ulepack/cli.py         argparse CLI + `ui` / `tui` subcommands
     src/ulepack/tui.py         Textual app (git-odos theme, same tokens as tidyUp)
 
-_Name:_ Albanian "ule pak", "lower it a bit", spelled ulePack (pak ≈ pack).
     src/ulepack/web/server.py  stdlib HTTP server + JSON API
     src/ulepack/web/static/    index.html, app.js, style.css, theme.js, icon.svg
 
 Claude Code knows this tool through the skill `~/.claude/skills/ulepack/SKILL.md`.
+
+"ule pak aman"
