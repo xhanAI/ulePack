@@ -101,4 +101,13 @@ and no-store. A newer install replaces an older running server automatically.
 
 Claude Code knows this tool through the skill `~/.claude/skills/ulepack/SKILL.md`.
 
+## License
+
+[MIT](LICENSE), © 2026 Adrian Xhanaj. Free to use, change and share, for anything, including commercial work.
+Keep the copyright notice.
+
+ulePack doesn't include ffmpeg. It runs the `ffmpeg` and `ffprobe` you install yourself, which come under their own
+licenses ([LGPL/GPL](https://ffmpeg.org/legal.html), depending on the build). The Python dependencies (Textual, Rich and
+friends) are MIT/BSD.
+
 "ule pak aman"

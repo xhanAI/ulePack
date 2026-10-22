@@ -2,6 +2,10 @@
 name = "ulepack"
 version = "0.1.0"
 description = "Shrink and convert screen recordings to fit chat-app upload limits (ffmpeg)"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Adrian Xhanaj" }]
 requires-python = ">=3.12"
 dependencies = ["textual>=8.0"]
 
