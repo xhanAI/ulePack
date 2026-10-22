@@ -4,6 +4,27 @@ _What it does:_ Shrinks and converts screen recordings so they fit chat-app uplo
 _Stack:_ Python 3.12, ffmpeg/ffprobe, Textual (TUI), stdlib HTTP server (web UI, the Local Browser UI Pattern)
 _Next:_ Remember the last used preset in the TUI; a Wave widget like tidyUp's.
 
+## Screenshots
+
+**Web UI** (`ulepack ui`): pick videos, pick a size, watch the job queue. One job is done, one is mid-encode.
+
+![ulePack web UI, dark theme](docs/screenshots/web-ui.png)
+
+<details>
+<summary>Light theme</summary>
+
+![ulePack web UI, light theme](docs/screenshots/web-ui-light.png)
+
+</details>
+
+**Terminal UI** (`ulepack`): the same engine and job queue in Textual.
+
+![ulePack terminal UI](docs/screenshots/tui.png)
+
+**CLI**: file info, a dry run, a Discord-sized MP4 and a GIF under 5 MB.
+
+![ulePack CLI output](docs/screenshots/cli.png)
+
 ## Install
 
     uv tool install --force ~/repos/active/ulePack
