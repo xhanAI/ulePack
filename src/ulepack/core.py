@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Callable
 
@@ -86,6 +86,12 @@ class Options:
     speed: float = 1.0
     gif_width: int = 800
     gif_fps: int = 12
+    cuts: list[tuple[float, float]] = field(default_factory=list)  # sections to remove (source times)
+    fade_in: float = 0.0         # seconds, of the output
+    fade_out: float = 0.0
+    crop: tuple[int, int, int | None, int | None] | None = None  # w, h, x, y (x/y None = centered)
+    rotate: int = 0              # clockwise: 0, 90, 180, 270
+    flip: str | None = None      # "h" (mirror) or "v" (upside down)
 
     @classmethod
     def from_dict(cls, d: dict) -> "Options":
@@ -111,6 +117,16 @@ class Options:
         o.speed = num("speed", float, 0.25, 16) or 1.0
         o.gif_width = num("gif_width", int, 120, 1920) or 800
         o.gif_fps = num("gif_fps", int, 2, 30) or 12
+        o.cuts = parse_cuts(str(d.get("cuts") or ""))
+        o.fade_in = num("fade_in", float, 0, 60) or 0.0
+        o.fade_out = num("fade_out", float, 0, 60) or 0.0
+        o.crop = parse_crop(str(d["crop"])) if d.get("crop") else None
+        o.rotate = int(d.get("rotate") or 0)
+        if o.rotate not in (0, 90, 180, 270):
+            raise ValueError("rotate must be 0, 90, 180 or 270")
+        o.flip = str(d["flip"]) if d.get("flip") else None
+        if o.flip not in (None, "h", "v"):
+            raise ValueError("flip must be h or v")
         return o
 
 
@@ -209,6 +225,32 @@ def parse_time(text: str) -> float:
     return secs
 
 
+def parse_cuts(text: str) -> list[tuple[float, float]]:
+    """'0:20-0:35, 1:10-1:20' -> [(20, 35), (70, 80)]: sections to remove."""
+    cuts = []
+    for part in filter(None, (p.strip() for p in text.split(","))):
+        a, sep, b = part.partition("-")
+        try:
+            start, end = parse_time(a), parse_time(b)
+        except ValueError:
+            sep = ""
+        if not sep or end <= start:
+            raise ValueError(f"bad cut: {part!r} (try 0:20-0:35)")
+        cuts.append((start, end))
+    return cuts
+
+
+def parse_crop(text: str) -> tuple[int, int, int | None, int | None]:
+    """'1280:720' (centered) or '1280:720:0:360' (w:h:x:y, pixels of the source)."""
+    try:
+        vals = [int(v) for v in text.strip().split(":")]
+    except ValueError:
+        vals = []
+    if len(vals) not in (2, 4) or min(vals) < 0 or min(vals[:2]) < 2:
+        raise ValueError(f"bad crop: {text!r} (try 1280:720 or 1280:720:0:360)")
+    return (vals[0], vals[1], vals[2], vals[3]) if len(vals) == 4 else (vals[0], vals[1], None, None)
+
+
 def human(n: float) -> str:
     for unit in ("B", "KB", "MB", "GB"):
         if n < 1000 or unit == "GB":
@@ -244,9 +286,53 @@ def list_videos(folder: Path) -> list[Path]:
                   key=lambda f: f.stat().st_mtime, reverse=True)
 
 
+def kept_cuts(info: Info, o: Options) -> list[tuple[float, float]]:
+    """Cuts clipped to the trimmed clip, merged, as times relative to its start."""
+    start = o.start or 0
+    end = min(o.end, info.duration) if o.end else info.duration
+    out: list[tuple[float, float]] = []
+    for a, b in sorted((max(a, start) - start, min(b, end) - start) for a, b in o.cuts):
+        if b <= a:
+            continue
+        if out and a <= out[-1][1]:
+            out[-1] = (out[-1][0], max(out[-1][1], b))
+        else:
+            out.append((a, b))
+    return out
+
+
 def clip_duration(info: Info, o: Options) -> float:
     end = min(o.end, info.duration) if o.end else info.duration
-    return max(0.1, (end - (o.start or 0)) / o.speed)
+    removed = sum(b - a for a, b in kept_cuts(info, o))
+    return max(0.1, (end - (o.start or 0) - removed) / o.speed)
+
+
+def framed(info: Info, o: Options) -> Info:
+    """`info` with the frame size after crop and rotate (what scaling works from)."""
+    w, h = info.width, info.height
+    if o.crop:
+        cw, ch, x, y = o.crop
+        if cw > w or ch > h or (x or 0) + cw > w or (y or 0) + ch > h:
+            raise EncodeError(f"crop {cw}x{ch} doesn't fit the {w}x{h} video")
+        w, h = cw, ch
+    if o.rotate in (90, 270):
+        w, h = h, w
+    return replace(info, width=w, height=h)
+
+
+def edits_label(o: Options) -> str:
+    parts = []
+    if o.cuts:
+        parts.append(f"{len(o.cuts)} cut{'s' if len(o.cuts) > 1 else ''}")
+    if o.fade_in or o.fade_out:
+        parts.append(f"fade {o.fade_in:g}s/{o.fade_out:g}s")
+    if o.crop:
+        parts.append(f"crop {o.crop[0]}x{o.crop[1]}")
+    if o.rotate:
+        parts.append(f"rotate {o.rotate}°")
+    if o.flip:
+        parts.append("mirrored" if o.flip == "h" else "flipped")
+    return ", ".join(parts)
 
 
 # --------------------------------------------------------------------------- ffmpeg
@@ -290,25 +376,57 @@ def input_args(info: Info, o: Options) -> list[str]:
     return a + ["-i", str(info.path)]
 
 
-def vfilters(info: Info, height: int, fps: float, speed: float) -> str:
+def not_cut(cuts: list[tuple[float, float]]) -> str:
+    return "not(" + "+".join(f"between(t,{a:g},{b:g})" for a, b in cuts) + ")"
+
+
+def edit_vfilters(info: Info, o: Options, fps: float) -> list[str]:
+    """Cuts, crop, rotate/flip and speed: everything that happens before scaling."""
+    f: list[str] = []
+    cuts = kept_cuts(info, o)
+    if cuts:  # drop the frames, then renumber them so the gaps close (needs a constant rate first)
+        rate = min(info.fps, fps * o.speed) if info.fps else fps * o.speed
+        f += [f"fps={rate:g}", f"select='{not_cut(cuts)}'", f"setpts=N/{rate:g}/TB"]
+    if o.crop:
+        cw, ch, x, y = o.crop
+        f.append(f"crop={cw}:{ch}" + (f":{x}:{y}" if x is not None else ""))
+    f += {90: ["transpose=clock"], 180: ["hflip", "vflip"], 270: ["transpose=cclock"]}.get(o.rotate, [])
+    f += {"h": ["hflip"], "v": ["vflip"]}.get(o.flip or "", [])
+    if o.speed != 1:
+        f.append(f"setpts=PTS/{o.speed}")
+    return f
+
+
+def fades(info: Info, o: Options, kind: str = "fade") -> list[str]:
+    dur = clip_duration(info, o)
+    fin, fout = min(o.fade_in, dur), min(o.fade_out, dur)
+    f = [f"{kind}=t=in:st=0:d={fin:g}"] if fin else []
+    return f + ([f"{kind}=t=out:st={dur - fout:g}:d={fout:g}"] if fout else [])
+
+
+def vfilters(info: Info, o: Options, height: int, fps: float) -> str:
+    """`info` is the framed() one, so the scale works from the cropped/rotated size."""
     w, h = scaled_dims(info, height)
-    f = [f"setpts=PTS/{speed}"] if speed != 1 else []
-    f += [f"fps={fps:g}", f"scale={w}:{h}:flags=lanczos", "format=yuv420p"]
-    return ",".join(f)
+    f = edit_vfilters(info, o, fps) + [f"fps={fps:g}", f"scale={w}:{h}:flags=lanczos"]
+    return ",".join(f + fades(info, o) + ["format=yuv420p"])
 
 
-def afilters(speed: float) -> list[str]:
-    if speed == 1:
-        return []
-    chain, s = [], speed  # atempo accepts 0.5..2 per instance, so chain for bigger factors
-    while s > 2:
-        chain.append("atempo=2")
-        s /= 2
-    while s < 0.5:
-        chain.append("atempo=0.5")
-        s /= 0.5
-    chain.append(f"atempo={s:g}")
-    return ["-af", ",".join(chain)]
+def afilters(info: Info, o: Options) -> list[str]:
+    chain = []
+    cuts = kept_cuts(info, o)
+    if cuts:
+        chain += [f"aselect='{not_cut(cuts)}'", "asetpts=N/SR/TB"]
+    s = o.speed  # atempo accepts 0.5..2 per instance, so chain for bigger factors
+    if s != 1:
+        while s > 2:
+            chain.append("atempo=2")
+            s /= 2
+        while s < 0.5:
+            chain.append("atempo=0.5")
+            s /= 0.5
+        chain.append(f"atempo={s:g}")
+    chain += fades(info, o, "afade")
+    return ["-af", ",".join(chain)] if chain else []
 
 
 def fps_for(info: Info, o: Options) -> float:
@@ -344,6 +462,15 @@ def plan_target(info: Info, o: Options, dur: float) -> tuple[int, float, int, in
 
 def describe(info: Info, o: Options) -> str:
     """One-line plan, without encoding anything (dry run / UI preview)."""
+    plan = _describe(framed(info, o), o)
+    edits = edits_label(o)
+    return f"{plan}; {edits}" if edits else plan
+
+
+def _describe(info: Info, o: Options) -> str:
+    end = min(o.end, info.duration) if o.end else info.duration
+    if end - (o.start or 0) - sum(b - a for a, b in kept_cuts(info, o)) <= 0:
+        raise EncodeError("nothing left: the trim and cuts remove the whole video")
     dur = clip_duration(info, o)
     if o.gif:
         return f"GIF {min(o.gif_width, even(info.width))}px wide @ {o.gif_fps} fps, {dur:.1f}s" + \
@@ -380,7 +507,7 @@ def compress(src: Path, out: Path, o: Options, on_progress: Progress | None = No
     log(f"plan: {plan}")
     out.parent.mkdir(parents=True, exist_ok=True)
     try:
-        (_gif if o.gif else _video)(info, o, out, log, stage, cancel)
+        (_gif if o.gif else _video)(framed(info, o), o, out, log, stage, cancel)
     except BaseException:
         out.unlink(missing_ok=True)
         raise
@@ -398,9 +525,9 @@ def _video(info: Info, o: Options, out: Path, log: Log, stage, cancel) -> None:
     if o.target is None:  # ---- quality mode
         height = min(o.max_height or 1080, info.height)
         crf = o.crf if o.crf is not None else CRF_DEFAULT[o.codec]
-        cmd = [*input_args(info, o), "-vf", vfilters(info, height, fps_for(info, o), o.speed),
+        cmd = [*input_args(info, o), "-vf", vfilters(info, o, height, fps_for(info, o)),
                "-c:v", enc, *extra, "-crf", str(crf)]
-        cmd += ["-c:a", "aac", "-b:a", "128k", *afilters(o.speed)] if audio else ["-an"]
+        cmd += ["-c:a", "aac", "-b:a", "128k", *afilters(info, o)] if audio else ["-an"]
         run_ffmpeg([*cmd, *faststart], dur, stage(0, 1, "encoding"), cancel)
         return
 
@@ -412,8 +539,8 @@ def _video(info: Info, o: Options, out: Path, log: Log, stage, cancel) -> None:
         # Plenty of room: a bitrate-capped CRF encode keeps easy clips small instead of
         # padding them up to the limit. Only fall back to two-pass if it overshoots.
         crf = o.crf if o.crf is not None else CRF_DEFAULT[o.codec]
-        acodec = ["-c:a", "aac", "-b:a", f"{ak}k", *afilters(o.speed)] if ak else ["-an"]
-        run_ffmpeg([*input_args(info, o), "-vf", vfilters(info, height, fps, o.speed), "-c:v", enc, *extra,
+        acodec = ["-c:a", "aac", "-b:a", f"{ak}k", *afilters(info, o)] if ak else ["-an"]
+        run_ffmpeg([*input_args(info, o), "-vf", vfilters(info, o, height, fps), "-c:v", enc, *extra,
                     "-crf", str(crf), "-maxrate", f"{vk}k", "-bufsize", f"{vk * 2}k", *acodec, *faststart],
                    dur, stage(0, 1, "encoding"), cancel)
         if out.stat().st_size <= budget:
@@ -422,9 +549,9 @@ def _video(info: Info, o: Options, out: Path, log: Log, stage, cancel) -> None:
     for attempt in range(1, 4):
         w, h = scaled_dims(info, height)
         tag = f" (try {attempt})" if attempt > 1 else ""
-        vf = vfilters(info, height, fps, o.speed)
+        vf = vfilters(info, o, height, fps)
         rate = ["-b:v", f"{vk}k", "-maxrate", f"{int(vk * 1.5)}k", "-bufsize", f"{vk * 2}k"]
-        acodec = ["-c:a", "aac", "-b:a", f"{ak}k", *afilters(o.speed)] if ak else ["-an"]
+        acodec = ["-c:a", "aac", "-b:a", f"{ak}k", *afilters(info, o)] if ak else ["-an"]
         with tempfile.TemporaryDirectory(prefix="ulepack-") as tmp:
             logf = os.path.join(tmp, "pass")
             if two_pass_ok:
@@ -460,7 +587,7 @@ def _gif(info: Info, o: Options, out: Path, log: Log, stage, cancel) -> None:
     tries = [(w, f) for f in fps_opts for w in widths] if o.target else [(widths[0], fps_opts[0])]
     for n, (width, fps) in enumerate(tries, 1):
         width = min(width, even(info.width))
-        pre = f"setpts=PTS/{o.speed}," if o.speed != 1 else ""
+        pre = "".join(f"{x}," for x in edit_vfilters(info, o, fps) + fades(info, o))
         vf = (f"{pre}fps={fps},scale={width}:-2:flags=lanczos,split[a][b];"
               "[a]palettegen=stats_mode=diff:max_colors=128[p];"
               "[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle")

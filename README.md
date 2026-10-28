@@ -85,6 +85,9 @@ and no-store. A newer install replaces an older running server automatically.
 - Drag and drop anywhere on the page. Dropped files are copied to `~/Videos/ulePack/`, and the outputs go next to them.
 - Preset chips and a custom MB limit, MP4/GIF, and more options (codec, max height, fps, speed, trim, drop audio).
   The page shows a live plan for the selected file.
+- **Edit**: remove sections (`0:20-0:35, 1:10-1:20`), fade in/out (picture and sound), rotate, mirror/flip,
+  crop (`W:H` centered or `W:H:X:Y`, source pixels). Edits apply to one batch and aren't remembered, so a cut
+  never carries over to the next video. Web UI only for now.
 - Job queue with live progress and cancel. For finished jobs: **Preview** (in-page player), **Download** (or drag the
   button to the desktop), **Copy file** (puts the file on the clipboard via `xclip` to paste into Files or a chat app),
   **Copy path**, and **Show in folder**.

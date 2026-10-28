@@ -6,9 +6,19 @@ const SETTINGS_KEY = "ulepack-settings";
 
 const S = { state: null, sig: "", folder: null, browse: null, sel: new Set(),
             opt: { preset: "discord", target_mb: "", gif: false, codec: "h264", max_height: "", fps: "",
-                   gif_width: "800", gif_fps: "12", speed: "1", start: "", end: "", no_audio: false } };
-try { Object.assign(S.opt, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")); } catch (e) { /* none saved */ }
-const save = () => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(S.opt)); } catch (e) { /* blocked */ } };
+                   gif_width: "800", gif_fps: "12", speed: "1", start: "", end: "", no_audio: false,
+                   cuts: "", fade_in: "", fade_out: "", rotate: "", flip: "", crop: "" } };
+// Edits belong to one video, so they're never remembered: a saved cut would silently hit the next file.
+const EDITS = ["cuts", "fade_in", "fade_out", "rotate", "flip", "crop"];
+try {
+  const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+  for (const k of EDITS) delete saved[k];
+  Object.assign(S.opt, saved);
+} catch (e) { /* none saved */ }
+const save = () => {
+  const keep = { ...S.opt }; for (const k of EDITS) delete keep[k];
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(keep)); } catch (e) { /* blocked */ }
+};
 const $ = (id) => document.getElementById(id);
 
 // ---- helpers (DOM only: file names are untrusted, never innerHTML) ----
@@ -178,7 +188,9 @@ function renderTargets() {
   $("custom").value = S.opt.target_mb;
 }
 function renderOptions() {
-  for (const id of ["codec", "max_height", "fps", "gif_width", "gif_fps", "speed", "start", "end"]) $(id).value = S.opt[id];
+  for (const id of ["codec", "max_height", "fps", "gif_width", "gif_fps", "speed", "start", "end", ...EDITS]) $(id).value = S.opt[id];
+  const n = EDITS.filter((k) => S.opt[k]).length;
+  $("edit_sum").textContent = n ? `Edit (${n} on)` : "Edit";
   $("no_audio").checked = !!S.opt.no_audio;
   document.body.classList.toggle("gif", !!S.opt.gif);
   for (const b of $("format").children) b.classList.toggle("on", (b.dataset.v === "gif") === !!S.opt.gif);
@@ -186,8 +198,8 @@ function renderOptions() {
 function changed() { save(); renderTargets(); renderOptions(); updateRun(); }
 $("custom").addEventListener("input", (e) => { S.opt.target_mb = e.target.value; save(); renderTargets(); updateRun(); });
 for (const b of $("format").children) b.onclick = () => { S.opt.gif = b.dataset.v === "gif"; changed(); };
-for (const id of ["codec", "max_height", "fps", "gif_width", "gif_fps", "speed"]) $(id).onchange = (e) => { S.opt[id] = e.target.value; changed(); };
-for (const id of ["start", "end"]) $(id).addEventListener("change", (e) => { S.opt[id] = e.target.value.trim(); changed(); });
+for (const id of ["codec", "max_height", "fps", "gif_width", "gif_fps", "speed", "fade_in", "fade_out", "rotate", "flip"]) $(id).onchange = (e) => { S.opt[id] = e.target.value; changed(); };
+for (const id of ["start", "end", "cuts", "crop"]) $(id).addEventListener("change", (e) => { S.opt[id] = e.target.value.trim(); changed(); });
 $("no_audio").onchange = (e) => { S.opt.no_audio = e.target.checked; changed(); };
 
 function toSeconds(t) {
