@@ -191,7 +191,7 @@ def cmd_tui(argv: list[str]) -> int:
     try:
         from .tui import ulePackApp
     except ImportError as e:
-        raise SystemExit(f"the TUI needs textual ({e}); install with: uv tool install ~/repos/active/ulePack")
+        raise SystemExit(f"the TUI needs textual ({e}); reinstall with: uv tool install --force git+https://github.com/xhanAI/ulePack")
     ulePackApp(folder).run()
     return 0
 

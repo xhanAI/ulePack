@@ -1,8 +1,8 @@
 # ulePack
 
-_What it does:_ Shrinks and converts screen recordings so they fit chat-app upload limits (Discord 10 MB, WhatsApp 16 MB, email, Slack…). It's an ffmpeg wrapper with a web UI, a Textual TUI and a scriptable CLI, all on one engine.
+_What it does:_ Shrinks and converts screen recordings so they fit chat-app upload limits (Discord 10 MB, WhatsApp 16 MB, email, Slack…), and does quick edits on the way: trim, remove sections, fade in/out, crop, rotate and flip. It's an ffmpeg wrapper with a web UI, a Textual TUI and a scriptable CLI, all on one engine, built to put more of ffmpeg's power one click away.
 _Stack:_ Python 3.12, ffmpeg/ffprobe, Textual (TUI), stdlib HTTP server (web UI, the Local Browser UI Pattern)
-_Next:_ Remember the last used preset in the TUI; a Wave widget like tidyUp's.
+_Next:_ The Edit options (cuts, fades, crop, rotate/flip) in the CLI and TUI; more ffmpeg filters (color tweaks, speed ramps, overlays and more); remember the last used preset in the TUI; a Wave widget like tidyUp's.
 
 ## Screenshots
 
@@ -27,7 +27,9 @@ _Next:_ Remember the last used preset in the TUI; a Wave widget like tidyUp's.
 
 ## Install
 
-    uv tool install --force ~/repos/active/ulePack
+    uv tool install git+https://github.com/xhanAI/ulePack
+
+Or from a clone: `uv tool install --force .` in the repo folder.
 
 Needs `ffmpeg` on PATH (`sudo apt install ffmpeg`).
 
@@ -77,8 +79,8 @@ Outputs go next to the input as `<name>.shrunk.mp4` (or `.gif`), never overwriti
   last minute a bar shows the countdown with **Keep running**. Closing the tab simply lets it idle out.
 - Ctrl+C in its terminal (also cancels jobs).
 
-After a stop, the page shows a "stopped" screen and reconnects by itself when you run `ulepack ui` again. It follows
-[[Local Browser UI Pattern]]: Host-header guard, a token on every API call, polling with `204` when nothing changed,
+After a stop, the page shows a "stopped" screen and reconnects by itself when you run `ulepack ui` again. It follows a
+small local-browser-UI pattern: Host-header guard, a token on every API call, polling with `204` when nothing changed,
 and no-store. A newer install replaces an older running server automatically.
 
 - Folder browser with thumbnails (cached in `~/.cache/ulepack/thumbs`). Quick links to Screencasts, Videos, Downloads, Desktop.
@@ -101,8 +103,6 @@ and no-store. A newer install replaces an older running server automatically.
 
     src/ulepack/web/server.py  stdlib HTTP server + JSON API
     src/ulepack/web/static/    index.html, app.js, style.css, theme.js, icon.svg
-
-Claude Code knows this tool through the skill `~/.claude/skills/ulepack/SKILL.md`.
 
 ## License
 

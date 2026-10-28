@@ -1,6 +1,6 @@
 """Local web UI: a JSON API over core + jobs, plus one static page.
 
-Follows the Local Browser UI Pattern (~/repos/Local Browser UI Pattern.md):
+Follows a small local-browser-UI pattern:
 binds to 127.0.0.1, checks the Host header on every request, needs the per-user
 token on every /api call (header) and media URL (query), sends no-store, and the
 page polls /api/state?since=<sig> (204 when nothing changed).
