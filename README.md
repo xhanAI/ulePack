@@ -1,8 +1,28 @@
 # ulePack
 
-_What it does:_ Shrinks and converts screen recordings so they fit chat-app upload limits (Discord 10 MB, WhatsApp 16 MB, email, Slack…), and does quick edits on the way: trim, remove sections, fade in/out, crop, rotate and flip. It's an ffmpeg wrapper with a web UI, a Textual TUI and a scriptable CLI, all on one engine, built to put more of ffmpeg's power one click away.
-_Stack:_ Python 3.12, ffmpeg/ffprobe, Textual (TUI), stdlib HTTP server (web UI, the Local Browser UI Pattern)
-_Next:_ The Edit options (cuts, fades, crop, rotate/flip) in the CLI and TUI; more ffmpeg filters (color tweaks, speed ramps, overlays and more); remember the last used preset in the TUI; a Wave widget like tidyUp's.
+**Shrink screen recordings to fit any chat app, and make quick edits on the way.**
+
+ulePack is an ffmpeg wrapper with a web UI, a terminal UI and a scriptable CLI, all on one engine.
+It puts ffmpeg's power one click away.
+
+## What it does
+
+- **Fits upload limits:** Discord 10 MB, WhatsApp 16 MB, email, Slack and more, with exact-size encoding and retries.
+- **Converts:** any video to MP4 (H.264, HEVC or AV1) or a GIF.
+- **Trims and speeds up:** keep only the part you need, or play it 2× faster.
+- **Edits** (web UI): remove sections, fade in/out, crop, rotate and flip.
+- **Never overwrites:** the result lands next to the original as `<name>.shrunk.mp4`.
+
+## Coming soon
+
+- [ ] The Edit options (cuts, fades, crop, rotate/flip) in the CLI and TUI
+- [ ] More ffmpeg filters: color tweaks, speed ramps, overlays and more
+- [ ] Remember the last used preset in the TUI
+- [ ] A Wave terminal widget
+
+## Built with
+
+Python 3.12 · ffmpeg / ffprobe · [Textual](https://textual.textualize.io/) (TUI) · Python's standard-library HTTP server (web UI)
 
 ## Screenshots
 
